@@ -45,7 +45,7 @@ public class CachingProxyCommand implements Runnable{
     public void run (){
         // Called by Picocli after parsing args[]
         config.setPortNo(port);
-        config.setUrl(origin);
+        config.setOriginUrl(origin);
     }
     /*
     After Picocli finishes parsing, it calls run(). This comes from implementing the runnable interface.

@@ -13,7 +13,7 @@ public class CacheflowApplication {
 	//we need the port before application starts
 	//this is to avoid clashes with tomcat later on
 	private static int extractPort(String[] args) {
-		for (int i = 0; i < args.length - 1; i++) {
+		for (int i = 0; i < args.length; i++) {
 			if ("--port".equals(args[i])) {
 				try {
 					return Integer.parseInt(args[i + 1]);
@@ -32,7 +32,7 @@ public class CacheflowApplication {
 		SpringApplication app = new SpringApplication(CacheflowApplication.class);
 
 		//setup server for tomcat
-		app.setDefaultProperties(Map.of("server.port", String.valueOf(port)));
+		System.setProperty("server.port", String.valueOf(port));
 
 		ConfigurableApplicationContext context = app.run(args);
 
