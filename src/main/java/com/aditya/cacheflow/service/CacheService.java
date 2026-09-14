@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -54,16 +55,14 @@ public class CacheService {
 
     public CachedResponse get(String key) {
         log.info("Cache HIT  : {}", key);
-        log.info("TTL: {}", appConfig.getTtlMinutes());
-        log.info("Max Entries: {}", appConfig.getMaxEntries());
         return getCache().getIfPresent(key);
     }
 
     public void put(String key, CachedResponse response) {
         getCache().put(key, response);
         log.info("MISS : Cached response for : {}", key);
-        log.info("TTL: {}", appConfig.getTtlMinutes());
-        log.info("Max Entries: {}", appConfig.getMaxEntries());
+        response.setCachedAt(LocalDateTime.now());
+        log.info("Timestamp : {}", response.getCachedAt());
     }
 
     public void clear() {
