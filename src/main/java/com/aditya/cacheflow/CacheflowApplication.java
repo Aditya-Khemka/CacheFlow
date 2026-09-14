@@ -1,5 +1,8 @@
 package com.aditya.cacheflow;
 
+import com.aditya.cacheflow.service.CacheService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -27,33 +30,40 @@ public class CacheflowApplication {
 	}
 
 	public static void main(String[] args) {
+
+        //Step 1: Extract port before Spring starts
 		int port = extractPort(args);
+        System.setProperty("server.port", String.valueOf(port));
 
-		SpringApplication app = new SpringApplication(CacheflowApplication.class);
-
-		//setup server for tomcat
-		System.setProperty("server.port", String.valueOf(port));
-
+        //Step 2: Start Spring
+        SpringApplication app = new SpringApplication(CacheflowApplication.class);
 		ConfigurableApplicationContext context = app.run(args);
+        final Logger log = LoggerFactory.getLogger(CacheflowApplication.class);
 
-		//now run the CLI command
+		//now run the CLI command (Picocli)
 		CachingProxyCommand command = context.getBean(CachingProxyCommand.class);
 		CommandLine.IFactory factory = context.getBean(CommandLine.IFactory.class);
 		Object obj = new CommandLine(command, factory).execute(args);
 
 
+        //handle clear-cache
 		if (command.isClearCache()) {
-			System.out.println("Cache cleared.");
+            CacheService cacheService = context.getBean(CacheService.class);
+            cacheService.clear();
+
+            log.info("Cache cleared.");
 			context.close(); // Spring shutdown
 			System.exit(-1);
 		}
 
+        //handle improper cli
 		if (command.getOrigin() == null || command.getOrigin().isBlank()) {
-			System.err.println("Error: --origin is required. Use --origin <url>");
+			log.info("Error: --origin is required.");
 			context.close();
 			System.exit(1);
 		}
 
+        //All the CLI options are provided and cache is ready
 		System.out.println("Proxy running on port " + port);
 		System.out.println("Forwarding to: " + command.getOrigin());
 
