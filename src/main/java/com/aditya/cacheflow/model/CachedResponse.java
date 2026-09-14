@@ -16,5 +16,4 @@ public class CachedResponse {
     private int statusCode;
     private HttpHeaders headers;
     private String body;
-
 }

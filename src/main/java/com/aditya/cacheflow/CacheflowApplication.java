@@ -31,20 +31,19 @@ public class CacheflowApplication {
 
 	public static void main(String[] args) {
 
-        //Step 1: Extract port before Spring starts
+        //Step 1: Extract port before Spring starts ; set in application properties
 		int port = extractPort(args);
         System.setProperty("server.port", String.valueOf(port));
 
         //Step 2: Start Spring
         SpringApplication app = new SpringApplication(CacheflowApplication.class);
-		ConfigurableApplicationContext context = app.run(args);
+		ConfigurableApplicationContext context = app.run(args); //context holds the spring container
+		CommandLine.IFactory factory = context.getBean(CommandLine.IFactory.class);
         final Logger log = LoggerFactory.getLogger(CacheflowApplication.class);
 
 		//now run the CLI command (Picocli)
 		CachingProxyCommand command = context.getBean(CachingProxyCommand.class);
-		CommandLine.IFactory factory = context.getBean(CommandLine.IFactory.class);
-		Object obj = new CommandLine(command, factory).execute(args);
-
+		Object obj = new CommandLine(command, factory).execute(args); //obj is never used ; just captured here
 
         //handle clear-cache
 		if (command.isClearCache()) {
@@ -64,9 +63,9 @@ public class CacheflowApplication {
 		}
 
         //All the CLI options are provided and cache is ready
-		System.out.println("Proxy running on port " + port);
-		System.out.println("Forwarding to: " + command.getOrigin());
-
+		log.info("Proxy running on {} " , port);
+		log.info("Forwarding to: {} " , command.getOrigin());
+		log.info("TTL is {} , max entries limited to {}" , command.getTtl(), command.getMaxEntries());
 	}
 
 }

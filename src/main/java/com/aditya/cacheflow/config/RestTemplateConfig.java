@@ -8,15 +8,15 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration @Component
 public class RestTemplateConfig {
-    /*
-    ClientHttpRequestFactory handles the actual low-level TCP connection
-    ie opening the socket, sending bytes, reading bytes back
-     */
 
-    //all methods inside a config need to be annotated with @bean
+    //RestTemplate is now a spring managed bean instead of just an ordinary object
+    //in other words, we're making modifications to the RestTemplate class (used in ProxyService)
     @Bean
     public RestTemplate restTemplate() {
-        // Create the factory that handles low-level HTTP connections
+
+        //ClientHttpRequestFactory handles the actual low-level TCP connection
+        //ie opening the socket, sending bytes, reading bytes back
+        //CarFactory creates cars ; HttpRequestFactory creates multiple HTTP requests
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
 
         //time to setup a connection
@@ -28,6 +28,6 @@ public class RestTemplateConfig {
 
         return new RestTemplate(factory);
     }
-
-    // using new RestTemplate() instead would have created a new bean everytime ; timeout would be much difficult
+    //without this config, we would need to manage the timing in proxyService ; hence the modification
+    //
 }
