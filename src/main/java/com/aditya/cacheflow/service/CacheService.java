@@ -12,21 +12,29 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-@Lazy
 @Service
 public class CacheService {
     private static final Logger log = LoggerFactory.getLogger(CacheService.class);
 
     //more than a normal hashmap; allows for concurrent usage
     private final AppConfig appConfig;
-    private final Cache<String, CachedResponse> cache;
+    private Cache<String, CachedResponse> cache;
 
     public CacheService(AppConfig appConfig) {
         this.appConfig = appConfig;
-        this.cache = Caffeine.newBuilder()
-                .expireAfterWrite(appConfig.getTtlMinutes(), TimeUnit.MINUTES)
-                .maximumSize(appConfig.getMaxEntries())
-                .build();
+    }
+
+    // Called once, the first time any cache operation is needed
+    private Cache<String, CachedResponse> getCache() {
+        if (cache == null) {
+            log.info("Initialising Caffeine — TTL: {} mins, maxEntries: {}",
+                    appConfig.getTtlMinutes(), appConfig.getMaxEntries());
+            cache = Caffeine.newBuilder()
+                    .expireAfterWrite(appConfig.getTtlMinutes(), TimeUnit.MINUTES)
+                    .maximumSize(appConfig.getMaxEntries())
+                    .build();
+        }
+        return cache;
     }
 
     // returns the origin URL, which will act as a key in our HashMap
@@ -41,18 +49,18 @@ public class CacheService {
 
     // Check if a cached response exist for this key
     public boolean has(String key) {
-        return cache.getIfPresent(key) != null;
+        return getCache().getIfPresent(key) != null;
     }
 
     public CachedResponse get(String key) {
         log.info("Cache HIT  : {}", key);
         log.info("TTL: {}", appConfig.getTtlMinutes());
         log.info("Max Entries: {}", appConfig.getMaxEntries());
-        return cache.getIfPresent(key);
+        return getCache().getIfPresent(key);
     }
 
     public void put(String key, CachedResponse response) {
-        cache.put(key, response);
+        getCache().put(key, response);
         log.info("MISS : Cached response for : {}", key);
         log.info("TTL: {}", appConfig.getTtlMinutes());
         log.info("Max Entries: {}", appConfig.getMaxEntries());
@@ -60,7 +68,7 @@ public class CacheService {
 
     public void clear() {
         long size = cache.estimatedSize();
-        cache.invalidateAll();
+        getCache().invalidateAll();
         log.info("Cache cleared — {} entries removed", size);
     }
 }

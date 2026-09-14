@@ -6,7 +6,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-@Configuration @Component
+@Configuration
 public class RestTemplateConfig {
 
     //RestTemplate is now a spring managed bean instead of just an ordinary object

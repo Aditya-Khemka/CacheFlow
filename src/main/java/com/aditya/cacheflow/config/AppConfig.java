@@ -13,8 +13,8 @@ public class AppConfig {
 
     private String originUrl = "https://dummyjson.com";
     private int portNo = 8080;
-    private int ttlMinutes ;
-    private int maxEntries ;
+    private int ttlMinutes = 15 ;
+    private int maxEntries = 100;
 
     //getters and setters handled by lombok
 

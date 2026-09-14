@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Component
 
 //stores GET responses ONLY
 public class CachedResponse {
