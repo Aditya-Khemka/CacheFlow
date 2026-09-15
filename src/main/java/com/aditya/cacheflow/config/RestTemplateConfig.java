@@ -29,5 +29,4 @@ public class RestTemplateConfig {
         return new RestTemplate(factory);
     }
     //without this config, we would need to manage the timing in proxyService ; hence the modification
-    //
 }

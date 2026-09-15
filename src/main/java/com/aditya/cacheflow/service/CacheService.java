@@ -1,7 +1,7 @@
 package com.aditya.cacheflow.service;
 
 import com.aditya.cacheflow.config.AppConfig;
-import com.aditya.cacheflow.controller.CacheEntryDTO;
+import com.aditya.cacheflow.model.CacheEntryDTO;
 import com.aditya.cacheflow.model.CachedResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -92,9 +92,27 @@ public class CacheService {
         log.info("Cache cleared — {} entries removed", size);
     }
 
-
     @PreDestroy
+    public void saveOnShutDown() {
+        saveToFile() ;
+    }
+
+    @Async
+    @Scheduled(fixedRateString = "${cache.save-interval-ms:90000}")
+    public void scheduledSave() {
+        saveToFile();
+    }
+
+    @PostConstruct
+    public void readPrevCache(){
+        //starts before any bean is created
+        loadFromFile();
+    }
+
+
+    
     public void saveToFile() {
+
         //null check
         if (cache == null) {
             log.info("Cache not yet initialised — skipping save");
@@ -116,17 +134,18 @@ public class CacheService {
 
         liveEntries.forEach((key, response) -> {
 
-            // Convert HttpHeaders to Map<String, List<String>>
+            // We need to convert HttpHeaders to Map<String, List<String>>
             // HttpHeaders.entrySet() gives us exactly this structure
-                Map<String, List<String>> headersMap = new java.util.HashMap<>();
-                if (response.getHeaders() != null) {
-                    response.getHeaders().forEach((headerName, headerValues) ->
-                            headersMap.put(headerName, headerValues)
-                    );
-                }
 
-                dtos.add(new CacheEntryDTO(key, response.getStatusCode(), headersMap,
-                        response.getBody(), response.getCachedAt()));
+            Map<String, List<String>> headersMap = new HashMap<>();
+            if (response.getHeaders() != null) {
+                response.getHeaders().forEach((headerName, headerValues) ->
+                    headersMap.put(headerName, headerValues)
+                );
+            }
+
+            dtos.add(new CacheEntryDTO(key, response.getStatusCode(),
+                    headersMap, response.getBody(), response.getCachedAt()));
             }
         );
 
@@ -140,14 +159,8 @@ public class CacheService {
         }
     }
 
-    @Async
-    @Scheduled(fixedRateString = "${cache.save-interval-ms:90000}")
-    public void scheduledSave() {
-        saveToFile();
-    }
 
 
-    @PostConstruct //starts before any bean is created
     public void loadFromFile() {
         File file = new File(CACHE_FILE);
 
@@ -162,7 +175,7 @@ public class CacheService {
         }
 
         try {
-            // Deserialise JSON array into List<CacheEntryDTO>
+            // Deserialise JSON into List<CacheEntryDTO>
             // TypeReference tells Jackson the exact generic type to deserialise into
             // can't write List<CacheEntryDTO>.class in Java due to type erasure
             // TypeReference is Jackson's workaround for this

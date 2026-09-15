@@ -72,7 +72,8 @@ public class ProxyController {
         Collections.list(request.getHeaderNames()).forEach(name -> {
             if (!name.equalsIgnoreCase("host")
                     && !name.equalsIgnoreCase("content-length")
-                    && !name.equalsIgnoreCase("transfer-encoding")) {
+                    && !name.equalsIgnoreCase("transfer-encoding")
+                    && !name.equalsIgnoreCase("accept-encoding")) {
                 headers.set(name, request.getHeader(name));
             }
         });
@@ -116,17 +117,17 @@ public class ProxyController {
     //takes response from the origin server and duplicates it
     private ResponseEntity<String> buildResponse(int status, HttpHeaders originHeaders, String body, String cacheStatus) {
         HttpHeaders responseHeaders = new HttpHeaders();
+
         if (originHeaders != null) {
             responseHeaders.addAll(originHeaders);
+            responseHeaders.remove("Content-Encoding");
+            responseHeaders.remove("Transfer-Encoding");
         }
 
         responseHeaders.set("X-Cache", cacheStatus);
         //X-Cache tells if this result is from the origin or cache (can be used by the client to check)
 
-        return ResponseEntity
-                .status(status)
-                .headers(responseHeaders)
-                .body(body);
+        return ResponseEntity.status(status).headers(responseHeaders).body(body);
         //HTTP response always has 3 parts : status , headers and body. ResponseEntity is used to construct them
     }
 
