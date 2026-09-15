@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import picocli.CommandLine;
 
+import java.io.File;
 import java.util.*;
 
 @SpringBootApplication
@@ -51,12 +52,18 @@ public class CacheflowApplication {
 
         //handle clear-cache
 		if (command.isClearCache()) {
-            CacheService cacheService = context.getBean(CacheService.class);
-            cacheService.clear();
+			// delete the file directly (no need to build the cache just to clear it)
+			File cacheFile = new File("cache.json");
 
-            log.info("Cache cleared.");
-			context.close(); // Spring shutdown
-			System.exit(-1);
+			if (cacheFile.exists()) {
+				cacheFile.delete();
+				log.info("Cache file deleted.");
+			} else {
+				log.info("No cache file found — nothing to clear.");
+			}
+
+			context.close();
+			System.exit(0);
 		}
 
         //handle improper cli
@@ -66,10 +73,17 @@ public class CacheflowApplication {
 			System.exit(1);
 		}
 
+		//explicitly create the cache ; build Caffeine with real TTL values and restore valid entries from previous session
+		CacheService cacheService = context.getBean(CacheService.class);
+		cacheService.createCache();
+		cacheService.restoreFromFile();
+
         //All the CLI options are provided and cache is ready
-		log.info("Proxy running on {} " , port);
-		log.info("Forwarding to: {} " , command.getOrigin());
-		log.info("TTL is {} , max entries limited to {}" , command.getTtl(), command.getMaxEntries());
+		log.info("Proxy running on port : {}", port);
+		log.info("Forwarding to         : {}", command.getOrigin());
+		log.info("TTL                   : {} minutes", command.getTtl());
+		log.info("Max entries           : {}", command.getMaxEntries());
+		System.out.println("\n\n");
 	}
 
 }
