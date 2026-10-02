@@ -1,0 +1,20 @@
+services:
+  cacheflow:
+
+    # build the image from the Dockerfile in this folder
+    build: .
+
+    # host:container, same as -p
+    ports:
+      - "3000:8080"
+
+    # volume-name:path-in-container, same as -v
+    volumes:
+      - cacheflow-data:/app/data
+
+    # appended to the ENTRYPOINT, all args to go here 
+    command: ["--origin=https://dummyjson.com"]
+
+# declares the named volume used above
+volumes:
+  cacheflow-data:
