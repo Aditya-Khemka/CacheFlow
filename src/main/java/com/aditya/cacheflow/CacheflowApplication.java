@@ -53,7 +53,7 @@ public class CacheflowApplication {
         //handle clear-cache
 		if (command.isClearCache()) {
 			// delete the file directly (no need to build the cache just to clear it)
-			File cacheFile = new File("cache.json");
+			File cacheFile = new File(CacheService.CACHE_FILE);
 
 			if (cacheFile.exists()) {
 				cacheFile.delete();

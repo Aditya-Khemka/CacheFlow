@@ -32,7 +32,9 @@ public class CacheService {
     private Cache<String, CachedResponse> cache;
 
 //    ===================disk storage===================
-    private static final String CACHE_FILE = "cache.json";
+    // relative to the working directory → <project root>/data/cache.json 
+    public static final String CACHE_DIR = "data";
+    public static final String CACHE_FILE = CACHE_DIR + File.separator + "cache.json";
     private final ObjectMapper objectMapper;
     private List<CacheEntryDTO> pendingRestore = new ArrayList<>();
 
@@ -106,7 +108,20 @@ public class CacheService {
     @PostConstruct
     public void readPrevCache(){
         //starts before any bean is created
+        createCacheDir();
         loadFromFile();
+    }
+
+    // create data/ on startup if it isn't there already
+    private void createCacheDir() {
+        File dir = new File(CACHE_DIR);
+        if (!dir.exists()) {
+            if (dir.mkdirs()) {
+                log.info("Created cache directory: {}", dir.getAbsolutePath());
+            } else {
+                log.warn("Could not create cache directory: {}", dir.getAbsolutePath());
+            }
+        }
     }
 
 
@@ -149,9 +164,11 @@ public class CacheService {
             }
         );
 
-        // Step 3 — write the list to cache.json
+        // Step 3 — write the list to data/cache.json
         try {
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(CACHE_FILE), dtos);
+            File file = new File(CACHE_FILE);
+            file.getParentFile().mkdirs();
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, dtos);
             log.info("Saved {} entries to {}", dtos.size(), CACHE_FILE);
 
         } catch (IOException e) {

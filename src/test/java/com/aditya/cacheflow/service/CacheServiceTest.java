@@ -46,10 +46,10 @@ public class CacheServiceTest {
 
     @AfterEach
     void tearDown() {
-        // Delete cache.json after every test so tests don't bleed into each other
+        // Delete data/cache.json after every test so tests don't bleed into each other
         // If test A writes a file and test B reads it, test B's result depends on A
         // Tests must be independent — tearDown ensures that
-        File file = new File("cache.json");
+        File file = cacheFile();
         if (file.exists()) {
             file.delete();
         }
@@ -293,21 +293,21 @@ public class CacheServiceTest {
 
     @Test
     void loadFromFile_missingFile_doesNotCrash() {
-        // No cache.json exists — loadFromFile() must handle this gracefully
+        // No data/cache.json exists — loadFromFile() must handle this gracefully
         assertDoesNotThrow(() -> cacheService.loadFromFile());
     }
 
     @Test
     void loadFromFile_emptyFile_doesNotCrash() throws IOException {
         // Create an empty file
-        new File("cache.json").createNewFile();
+        cacheFile().createNewFile();
         assertDoesNotThrow(() -> cacheService.loadFromFile());
     }
 
     @Test
     void loadFromFile_malformedJson_doesNotCrash() throws IOException {
         // Write garbage to the file — not valid JSON
-        try (FileWriter writer = new FileWriter("cache.json")) {
+        try (FileWriter writer = new FileWriter(cacheFile())) {
             writer.write("this is not valid json {{{{");
         }
         // Must not throw — must log a warning and continue
@@ -315,12 +315,19 @@ public class CacheServiceTest {
     }
 
 
-    // Helper
+    // Helpers
+    // Returns data/cache.json and makes sure data/ exists so tests can write to it
+    private File cacheFile() {
+        File file = new File(CacheService.CACHE_FILE);
+        file.getParentFile().mkdirs();
+        return file;
+    }
+
     private void writeCacheFile(List<CacheEntryDTO> entries) throws IOException {
         // ObjectMapper with JavaTimeModule so it can write LocalDateTime
         com.fasterxml.jackson.databind.ObjectMapper mapper =
                 new com.fasterxml.jackson.databind.ObjectMapper();
         mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
-        mapper.writerWithDefaultPrettyPrinter().writeValue(new File("cache.json"), entries);
+        mapper.writerWithDefaultPrettyPrinter().writeValue(cacheFile(), entries);
     }
 }
