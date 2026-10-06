@@ -1,0 +1,25 @@
+# Render Blueprint: used by the "Deploy to Render" button in the readme.
+# Spec: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: cacheflow
+    runtime: docker          # build from ./Dockerfile at the repo root
+    plan: free               # 0.1 CPU, 512 MB RAM ; sleeps when idle
+
+    # A deploy-button copy should not redeploy every time this repo gets a commit.
+    autoDeployTrigger: "off"
+
+    # No healthCheckPath on purpose: every path is forwarded to the origin,
+    # so an origin outage would make Render mark this service unhealthy.
+    # No PORT either: Render injects it, and the Dockerfile passes it as --port.
+    envVars:
+      # sync: false -> Render asks for these values in a form before the first deploy
+      - key: ORIGIN          # required
+        sync: false
+      - key: TTL             # minutes ; leave empty for 15
+        sync: false
+      - key: MAX_ENTRIES     # leave empty for 100
+        sync: false
+      # Cap the JVM heap so it fits inside the free instance's 512 MB
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70

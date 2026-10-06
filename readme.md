@@ -50,11 +50,57 @@ docker compose up --build
 
 The proxy is then available at `http://localhost:3000`, forwarding to the origin set in `docker-compose.yml`. Responses carry an `X-Cache: HIT` or `MISS` header.
 
-To proxy a different server or add flags, edit the `--origin` value in the `command:` line of `docker-compose.yml`.
+The container is configured with **environment variables**, not CLI flags. The image's entrypoint turns them into flags:
+
+| Env var       | Flag             | Default                         |
+|---------------|------------------|---------------------------------|
+| `ORIGIN`      | `--origin`       | *(required, container exits without it)* |
+| `PORT`        | `--port`         | `8080`                          |
+| `TTL`         | `--ttl`          | `15` (minutes)                  |
+| `MAX_ENTRIES` | `--max-entries`  | `100`                           |
+
+To proxy a different server or change a setting, edit the `environment:` block in `docker-compose.yml`. Empty values fall back to the defaults. Without Compose:
+
+```
+docker build -t cacheflow .
+docker run -e ORIGIN=https://dummyjson.com -e TTL=30 -p 3000:8080 cacheflow
+```
+
+Anything after the image name is passed to the app as extra flags (e.g. `docker run -e ORIGIN=... cacheflow --clear-cache`). Don't repeat `--origin`/`--port`/`--ttl`/`--max-entries` that way, since the entrypoint already sets them; use the env vars instead.
 
 The cache is persisted to `data/cache.json` inside a named Docker volume, so it survives container restarts. To wipe it: `docker compose down -v`.
 
 **How the image is built:** a two-stage Dockerfile. Stage 1 (Maven + JDK) compiles the jar; stage 2 (JRE only) contains just the jar, which keeps the final image small.
+
+
+
+## Deploy on Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Aditya-Khemka/CacheFlow)
+
+The button reads [`render.yaml`](render.yaml) and creates a free Docker web service. Before the first deploy, Render asks for:
+
+| Field         | Required | Description                                        |
+|---------------|----------|----------------------------------------------------|
+| `ORIGIN`      | yes      | Origin server URL to forward requests to, e.g. `https://dummyjson.com` |
+| `TTL`         | no       | Cache entry time-to-live in minutes (empty = `15`) |
+| `MAX_ENTRIES` | no       | Maximum number of cached entries (empty = `100`)   |
+
+The port is not a field: Render injects `PORT` and the entrypoint passes it to `--port`.
+
+**Free tier notes**
+
+- The service sleeps when idle, so the first request after a pause is slow while it wakes up.
+- There is no persistent disk, so `data/cache.json` is lost on every restart or redeploy. Caching works normally while the service is up, but the persistence doesn't survive redeploys.
+
+> **Security warning:** the cache key ignores request headers such as `Authorization`. Don't point a public deployment at an authenticated API, because one user's cached response could be served to another.
+
+**Verify it works:** request the same URL twice and check the `X-Cache` header:
+
+```
+curl -s -o /dev/null -D - https://<your-service>.onrender.com/products/1 | grep -i x-cache   # X-Cache: MISS
+curl -s -o /dev/null -D - https://<your-service>.onrender.com/products/1 | grep -i x-cache   # X-Cache: HIT
+```
 
 
 

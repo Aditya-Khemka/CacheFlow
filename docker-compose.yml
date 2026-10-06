@@ -12,8 +12,13 @@ services:
     volumes:
       - cacheflow-data:/app/data
 
-    # appended to the ENTRYPOINT, all args to go here 
-    command: ["--origin=https://dummyjson.com"]
+    # settings for the proxy ; the Dockerfile's ENTRYPOINT turns these into --origin, --ttl, --max-entries
+    # values are quoted so YAML keeps them as strings, which is what env vars must be
+    environment:
+      ORIGIN: https://dummyjson.com
+      TTL: "15"
+      MAX_ENTRIES: "100"
+      PORT : "8080"
 
 # declares the named volume used above
 volumes:

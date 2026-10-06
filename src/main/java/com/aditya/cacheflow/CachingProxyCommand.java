@@ -59,6 +59,7 @@ public class CachingProxyCommand implements Runnable{
     @Override
     public void run (){
         // Called by Picocli after parsing args[]
+        origin = stripTrailingSlashes(origin); // "https://x.com/" -> "https://x.com", else origin + uri gives "//path"
         config.setPortNo(port);
         config.setOriginUrl(origin);
         config.setTtlMinutes(ttl);
@@ -68,4 +69,10 @@ public class CachingProxyCommand implements Runnable{
     After Picocli finishes parsing, it calls run(). This comes from implementing the runnable interface.
     That's where we write the parsed values into AppConfig ; so the rest of the app can read them.
      */
+
+    //removes every trailing '/' from the origin (null stays null)
+    static String stripTrailingSlashes(String url) {
+        if (url == null) return null;
+        return url.replaceAll("/+$", "");
+    }
 }
