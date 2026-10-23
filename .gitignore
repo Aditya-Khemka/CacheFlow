@@ -46,3 +46,4 @@ target/**
 */target/**
 target
 
+/stress_test/**

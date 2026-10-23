@@ -41,7 +41,7 @@ This project was built incrementally, in line with the roadmap.sh challenge stru
 | Phase 2<br/>Caching   | (in-memory) caches `GET` responses in a Caffeine cache with TTL and max-size eviction                  |
 | Phase 3<br/>Caching   | (persistent) snapshots the cache to `data/cache.json` on disk and restores it on startup                    |
 | Phase 4<br/>Docker   | multi-stage Dockerfile (Maven build stage → JRE-only runtime stage) plus a Compose file                    |
-
+| Phase 5<br/>testing   | k6 load tests against a mock origin (`origin.py`),  measuring throughput, p95 latency and hit rate |
 ## Run with Docker
 
 ```
@@ -74,6 +74,50 @@ The cache is persisted to `data/cache.json` inside a named Docker volume, so it 
 
 
 
+## Load Testing
+
+CacheFlow was load-tested with [Grafana k6](https://k6.io) against a mock origin with a fixed 150 ms response delay, to compare direct-to-origin latency with latency through the proxy.
+
+### Method
+
+- **Origin:** `origin.py`, a small Python server that answers `GET /item/<id>` after a 150 ms delay and counts the requests that actually reach it.
+- **Workload:** k6 (`loadtest.js`) with upto 50 concurrent users for 30 s, each requesting a random key from a space of 100 keys.
+- **Cache config:** TTL 30 s, max 200 entries.
+- **Procedure:** the baseline run goes straight to the origin. For each proxy run, CacheFlow is restarted first (cold cache) and warmed up with a few requests outside the test key range.
+- **Hit rate:** `1 - (origin requests / total requests)`, measured from the origin's own counter.
+
+
+### Results
+
+| Scenario | Users | Throughput (req/s) | p95 latency | Hit rate |
+|:--|--:|--:|--:|--:|
+| Direct to origin | 50 | ~328 | ~153 ms | n/a |
+| Through CacheFlow | 5 | ~4,740 | ~1.1 ms | 99.8% |
+| Through CacheFlow | 25 | ~9,450 | ~4.8 ms | 99.7% |
+| Through CacheFlow | 50 | ~10,940 | ~9.5 ms | 99.8% |
+
+
+### Caveats
+
+- The key space (100 keys) fits entirely in the cache, which is why the hit rate is close to 100%. A larger key space will lower it.
+- Throughput levels off near 10K req/s because k6, CacheFlow and the origin share one machine, so this is not a hard limit of CacheFlow.
+- Figures are averaged across 8–10 runs and may vary by machine.
+
+### Reproduce
+
+```powershell
+# 1. Start the mock origin (port 9000, 150 ms delay)
+python origin.py
+
+# 2. Start CacheFlow on :8080 pointing at http://127.0.0.1:9000 
+
+# 3. Run the full sequence 
+powershell -ExecutionPolicy Bypass -File .\run_tests.ps1 -OriginUrl http://127.0.0.1:9000 -ProxyUrl http://127.0.0.1:8080
+```
+
+Results are written to a `results_<timestamp>/` folder (CSV summary plus the full k6 logs).
+
+
 ## Deploy on Render
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Aditya-Khemka/CacheFlow)
@@ -104,9 +148,11 @@ curl -s -o /dev/null -D - https://<your-service>.onrender.com/products/1 | grep 
 
 
 
+
+
 ## Notes
 
 - Only `GET` responses are cached; all other methods are always forwarded live.
 - The cache key does not currently account for request headers (e.g. `Authorization`), so two different clients requesting the same GET URL will share a cache entry.
 - `data/cache.json` is written relative to the current working directory the app is run from (the project root when run locally); the `data/` folder is created on startup if it does not already exist.
-- Tech Stack : Java 25 · Spring Boot 4 · Picocli · Caffeine · Jackson · Maven · Docker
+- Tech Stack : Java 25 · Spring Boot 4 (Spring Web, embedded Tomcat, `RestTemplate`) · Picocli (CLI flags) · Caffeine (in-memory cache) · Jackson · Maven · Docker (multi-stage build, Compose) · Render (deployment) · Grafana k6, Python and PowerShell (load testing)
